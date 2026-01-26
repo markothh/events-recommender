@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Геопрофили</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createProfileModal">
+      Создать профиль
+    </button>
+  </div>
+
+  <div id="profiles-list" class="row g-3">
+    <!-- профили подгружаются через JS -->
+  </div>
+
+</div>
+
+{% include "components/create_geoprofile_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU"></script>
+<script src="{{ url_for('static', filename='js/geoprofiles.js') }}"></script>
+{% endblock %}

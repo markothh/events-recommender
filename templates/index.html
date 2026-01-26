@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="input-group">
+      <input id="search"
+       class="form-control"
+       placeholder="Поиск по названию или тегам">
+      <button id="btn-search" class="btn btn-secondary">Найти</button>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <h5 class="mb-3">Рекомендации</h5>
+    <div id="recs"></div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-12 d-flex justify-content-center">
+    <nav>
+      <ul id="pagination" class="pagination"></ul>
+    </nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const YANDEX_API_KEY = "{{ yandex_api_key }}";
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
