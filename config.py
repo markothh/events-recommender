@@ -1,4 +1,3 @@
-# config.py
 DB = {
     "host": "localhost",
     "port": 5432,

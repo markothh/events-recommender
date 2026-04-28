@@ -23,7 +23,6 @@ def save_events_to_db(events, dt: datetime):
     conn = get_conn()
     cur = conn.cursor()
 
-    cache_values = []
     archive_values = []
 
     for e in events:
@@ -97,17 +96,6 @@ def save_events_to_db(events, dt: datetime):
         if images:
             thumbnail = images[0].get("image")
 
-        # ---------- events_cache ----------
-        cache_values.append((
-            event_id,
-            title,
-            Json(place),
-            start_date,
-            end_date,
-            tags,
-            thumbnail
-        ))
-
         # ---------- events_archive ----------
         archive_values.append((
             event_id,
@@ -118,20 +106,7 @@ def save_events_to_db(events, dt: datetime):
             thumbnail
         ))
 
-    # ---------- INSERT events_cache ----------
-    cache_sql = """
-        INSERT INTO events_cache (id, title, place, start_date, end_date, tags, thumbnail)
-        VALUES %s
-        ON CONFLICT (id) DO UPDATE SET
-            title = excluded.title,
-            place = excluded.place,
-            start_date = excluded.start_date,
-            end_date = excluded.end_date,
-            tags = excluded.tags,
-            thumbnail = excluded.thumbnail;
-    """
-
-    # ---------- INSERT events_archive ----------
+# ---------- INSERT events_archive ----------
     archive_sql = """
         INSERT INTO events_archive (id, title, place, dates, tags, thumbnail)
         VALUES %s
@@ -143,13 +118,14 @@ def save_events_to_db(events, dt: datetime):
             thumbnail = excluded.thumbnail;
     """
 
-    if cache_values:
-        execute_values(cur, cache_sql, cache_values)
-
     if archive_values:
         execute_values(cur, archive_sql, archive_values)
 
     conn.commit()
+
+    cur.execute("SELECT refresh_events_cache();")
+    print("events_cache refreshed")
+
     cur.close()
     conn.close()
 
@@ -167,13 +143,21 @@ def delete_old_events(before_dt: datetime):
     cur = conn.cursor()
 
     sql = """
-        DELETE FROM events_cache
+        DELETE FROM events_archive
         WHERE start_date < %s or start_date is null;
     """
 
     cur.execute(sql, (before_dt,))
     deleted = cur.rowcount
 
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Обновляем кэш
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT refresh_events_cache();")
     conn.commit()
     cur.close()
     conn.close()
@@ -196,8 +180,6 @@ def search_events_from_db(user_id: int, since_dt: datetime = None):
             e.id,
             e.title,
             e.place,
-            e.start_date,
-            e.end_date,
             e.tags,
             e.thumbnail
         FROM events_cache e
@@ -249,7 +231,7 @@ def search_events_from_db_by_query(query, since_dt=None):
     cur = conn.cursor()
     query_lower = query.lower()
 
-    sql = "SELECT id, title, place, start_date, end_date, tags, thumbnail FROM events_cache"
+    sql = "SELECT id, title, place, tags, thumbnail FROM events_cache"
     params = []
     if since_dt:
         sql += " WHERE start_date >= %s"

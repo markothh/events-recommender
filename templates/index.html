@@ -1,21 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-3">
+<div class="row mb-3 g-2">
   <div class="col-12">
     <div class="input-group">
       <input id="search"
        class="form-control"
-       placeholder="Поиск по названию или тегам">
-      <button id="btn-search" class="btn btn-secondary">Найти</button>
+       placeholder="Поиск">
+      <button id="btn-search" class="btn btn-secondary">
+        <i class="bi bi-search"></i>
+      </button>
     </div>
   </div>
 </div>
 
-<div class="row">
+<div class="row mb-2">
   <div class="col-12">
     <h5 class="mb-3">Рекомендации</h5>
-    <div id="recs"></div>
+    <div id="recs" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3"></div>
   </div>
 </div>
 

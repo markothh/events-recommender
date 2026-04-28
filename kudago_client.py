@@ -1,4 +1,3 @@
-# kudago_client.py
 import requests
 from datetime import datetime
 from typing import Dict, Any, Optional

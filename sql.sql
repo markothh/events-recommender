@@ -12,16 +12,6 @@ CREATE TABLE users (
   active_profile_id TEXT
 );
 
-CREATE TABLE events_cache (
-    id INT PRIMARY KEY,
-    title TEXT,
-    place JSONB,
-    start_date TIMESTAMP,
-    end_date TIMESTAMP,
-	tags TEXT[],
-	thumbnail TEXT
-);
-
 CREATE TABLE events_archive (
     id INT PRIMARY KEY,
     title TEXT,
@@ -37,3 +27,32 @@ CREATE TABLE tracked_events (
   event_id INTEGER REFERENCES events_archive(id),
   UNIQUE(user_id, event_id)
 );
+
+-- MATERIALIZED VIEW для кэша актуальных событий
+CREATE MATERIALIZED VIEW events_cache AS
+SELECT 
+    e.id,
+    e.title,
+    e.place,
+    e.tags,
+    e.thumbnail,
+    to_timestamp((nearest.date->>'start')::bigint) AS start_date,
+    to_timestamp((nearest.date->>'end')::bigint) AS end_date
+FROM events_archive e
+CROSS JOIN LATERAL (
+    SELECT d AS date FROM jsonb_array_elements(e.dates) AS d
+    WHERE to_timestamp((d->>'start')::bigint) > now()
+    ORDER BY (d->>'start')::bigint ASC
+    LIMIT 1
+) AS nearest;
+
+CREATE INDEX idx_events_cache_start ON events_cache(start_date);
+
+-- Функция для обновления MATERIALIZED VIEW (вызывается вручную после импорта)
+CREATE OR REPLACE FUNCTION refresh_events_cache()
+RETURNS void AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW events_cache;
+END;
+$$ LANGUAGE plpgsql;
+

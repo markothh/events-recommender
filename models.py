@@ -1,4 +1,3 @@
-# models.py
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.dialects.postgresql import JSONB

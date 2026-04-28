@@ -7,7 +7,7 @@ def load_events():
     conn = psycopg2.connect(**DB)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT tags FROM events")
+    cursor.execute("SELECT tags FROM events_archive")
     rows = cursor.fetchall()
 
     conn.close()

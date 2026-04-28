@@ -1,4 +1,3 @@
-# run.py
 from datetime import datetime
 
 from db import get_user_interest_vector, search_events_from_db
