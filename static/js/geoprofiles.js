@@ -3,12 +3,46 @@ let selectedLon = null;
 let map;
 let placemark;
 
+const SEARCH_MODE_DESCRIPTIONS = {
+    nearby: "События показываются в первую очередь по близости к выбранному месту",
+    balanced: "Баланс между близостью и интересом",
+    interests: "События подбираются по вашим интересам"
+};
+
 $(function () {
+    loadSearchMode();
     loadProfiles();
+
+    $(".mode-btn").on("click", function() {
+        const mode = $(this).data("mode");
+        setSearchMode(mode);
+    });
 
     $("#createProfileModal").on("shown.bs.modal", initCreateMap);
     $("#btn-save-profile").on("click", saveProfile);
 });
+
+function loadSearchMode() {
+    $.getJSON("/api/search-mode", function(mode) {
+        $(".mode-btn").removeClass("btn-primary").addClass("btn-outline-secondary");
+        $(`.mode-btn[data-mode="${mode}"]`).removeClass("btn-outline-secondary").addClass("btn-primary");
+        $("#mode-description").text(SEARCH_MODE_DESCRIPTIONS[mode] || "");
+    });
+}
+
+function setSearchMode(mode) {
+    $.ajax({
+        url: "/api/search-mode",
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ mode: mode }),
+        success: function() {
+            $(".mode-btn").removeClass("btn-primary").addClass("btn-outline-secondary");
+            $(`.mode-btn[data-mode="${mode}"]`).removeClass("btn-outline-secondary").addClass("btn-primary");
+            $("#mode-description").text(SEARCH_MODE_DESCRIPTIONS[mode] || "");
+        }
+    });
+}
 
 function loadProfiles() {
     $.getJSON("/api/geoprofiles", function (profiles) {
@@ -16,8 +50,7 @@ function loadProfiles() {
         $list.empty();
 
         $.getJSON("/api/geoprofiles/active", function (activeId) {
-
-            const isActiveCurrent = !activeId;
+            const isActiveCurrent = activeId === null || activeId === "" || activeId === undefined;
             $list.append(renderCurrentLocationProfile(isActiveCurrent));
 
             profiles.forEach(p => {

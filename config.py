@@ -18,7 +18,12 @@ YANDEX_API = os.environ.get('YANDEX_API', '31329796-880c-441b-b0e1-2b6fc0b9cdea'
 SECRET = os.environ.get('SECRET', 'tarasova_sofya_iuk4-82b_programm_engineering_diploma')
 
 
-SIMILARITY_CONTRIBUTION = 0.75
+SEARCH_MODES = {
+    "nearby": 0.3,      # Рядом - больше вес геолокации
+    "balanced": 0.6,    # Сбалансированный
+    "interests": 0.85   # По интересам - больше вес похожести
+}
+
 CITY_CHANGE_PENALTY = 0.3
 SAME_CITY_GRADE = 1.0
 GEOSCORE_DESCEND = 50.0

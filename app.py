@@ -9,9 +9,9 @@ import psycopg2.extras
 from werkzeug.security import generate_password_hash, check_password_hash
 import requests
 
-from db import get_conn, search_events_from_db_by_query
-from recommender import update_user_interests_on_watch, update_user_vector_after_grade
-from run import recsys
+from services.database import db_service
+from recommendations import get_recommendations
+from services.recommender import recommender_service
 from config import SECRET, DB, KUDAGO_API, YANDEX_API
 
 
@@ -31,7 +31,7 @@ def login():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        conn = get_conn()
+        conn = db_service.get_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute("SELECT id, password_hash FROM users WHERE username=%s", (username,))
         row = cur.fetchone()
@@ -49,7 +49,7 @@ def register():
         username = request.form["username"]
         password = request.form["password"]
         pw_hash = generate_password_hash(password)
-        conn = get_conn()
+        conn = db_service.get_connection()
         cur = conn.cursor()
         try:
             cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s) RETURNING id",
@@ -76,7 +76,7 @@ def logout():
 @app.route("/api/tags")
 @login_required
 def api_tags():
-    conn = get_conn()
+    conn = db_service.get_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute("SELECT id, name FROM tags ORDER BY name")
     tags = [{"id": r["id"], "name": r["name"]} for r in cur.fetchall()]
@@ -92,7 +92,7 @@ def select_interests():
         selected_ids = data.get("selected", [])  # список id выбранных тегов
 
         # Загружаем имена тегов по id
-        conn = get_conn()
+        conn = db_service.get_connection()
         cur = conn.cursor()
 
         if selected_ids:
@@ -136,36 +136,27 @@ def api_recommendations():
     page_size = 32
     offset = (page - 1) * page_size
 
-    conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT geoprofiles, active_profile_id FROM users WHERE id=%s", (user_id,))
-    user_row = cur.fetchone()
-    geoprofiles = user_row.get("geoprofiles") or []
-    active_profile_id = user_row.get("active_profile_id")
-
+    active_profile = db_service.get_active_geoprofile(user_id)
+    
     lat = lon = None
-    if not active_profile_id:
+    if active_profile:
+        lat = active_profile.get("lat")
+        lon = active_profile.get("lon")
+    else:
         try:
             lat = float(data.get("lat"))
             lon = float(data.get("lon"))
         except (TypeError, ValueError):
             pass
-    else:
-        profile = next((p for p in geoprofiles if p["id"] == active_profile_id), None)
-        if profile:
-            lat = profile.get("lat")
-            lon = profile.get("lon")
 
-    cur.execute("SELECT interests FROM users WHERE id=%s", (user_id,))
-    user_interests = cur.fetchone()["interests"] or {}
+    search_mode = db_service.get_user_search_mode(user_id)
+    user_interests = db_service.get_user_interests(user_id)
 
-    cur.close()
-    conn.close()
-
-    events = recsys(
+    events = get_recommendations(
         user_id=user_id,
         latitude=lat,
-        longitude=lon
+        longitude=lon,
+        search_mode=search_mode
     )
 
     total = len(events)
@@ -219,7 +210,7 @@ def api_event(event_id):
     ]
 
     # 3. Интересы пользователя
-    conn = get_conn()
+    conn = db_service.get_connection()
     cur = conn.cursor()
     cur.execute("SELECT interests FROM users WHERE id = %s", (session["user_id"],))
     interests = cur.fetchone()[0] or {}
@@ -265,7 +256,7 @@ def tracked():
 def api_tracked_events():
     now = datetime.now()
 
-    conn = get_conn()
+    conn = db_service.get_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     cur.execute("""
@@ -312,7 +303,7 @@ def api_tracked_events():
 @app.route("/api/track/<int:event_id>", methods=["POST"])
 @login_required
 def api_track_event(event_id):
-    conn = get_conn()
+    conn = db_service.get_connection()
     cur = conn.cursor()
 
     try:
@@ -342,7 +333,7 @@ def api_track_event(event_id):
         event_tags = row[0] if row else []
 
         # 4. Обновляем вектор интересов
-        new_interests = update_user_interests_on_watch(
+        new_interests = recommender_service.update_interests_on_watch(
             interests,
             event_tags
         )
@@ -366,21 +357,24 @@ def api_track_event(event_id):
 def grade_tracked_event(event_id):
     data = request.json
     liked = data.get("liked")
-
-    update_user_vector_after_grade(
-        user_id=session["user_id"],
-        event_id=event_id,
-        liked=liked
-    )
-
-    conn = get_conn()
+    user_id = session["user_id"]
+    
+    interests = db_service.get_user_interests(user_id)
+    event_tags = db_service.get_event_tags(event_id)
+    
+    new_interests = recommender_service.update_interests_on_grade(interests, event_tags, liked)
+    db_service.update_user_interests(user_id, new_interests)
+    
+    conn = db_service.get_connection()
     cur = conn.cursor()
     cur.execute("""
         DELETE FROM tracked_events
         WHERE user_id = %s AND event_id = %s
-    """, (session["user_id"], event_id))
+    """, (user_id, event_id))
     conn.commit()
-
+    cur.close()
+    conn.close()
+    
     return jsonify({"ok": True})
 
 # --- Profile and geoprofiles ---
@@ -393,7 +387,7 @@ def profile():
 @app.route("/api/geoprofiles", methods=["GET", "POST"])
 @login_required
 def geoprofiles_api():
-    conn = get_conn()
+    conn = db_service.get_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if request.method == "GET":
@@ -423,7 +417,7 @@ def geoprofiles_api():
 @app.route("/api/geoprofiles/<profile_id>", methods=["DELETE"])
 @login_required
 def geoprofiles_delete(profile_id):
-    conn = get_conn()
+    conn = db_service.get_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     # Получаем текущие профили
@@ -451,12 +445,15 @@ def geoprofiles_delete(profile_id):
 @app.route("/api/geoprofiles/active", methods=["GET", "POST"])
 @login_required
 def geoprofiles_active():
-    conn = get_conn()
+    conn = db_service.get_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if request.method == "GET":
         cur.execute("SELECT active_profile_id FROM users WHERE id=%s", (session["user_id"],))
-        active = cur.fetchone()["active_profile_id"]
+        row = cur.fetchone()
+        active = row["active_profile_id"] if row else None
+        cur.close()
+        conn.close()
         return jsonify(active)
 
     # POST = установка активного профиля
@@ -465,6 +462,33 @@ def geoprofiles_active():
     cur.execute("UPDATE users SET active_profile_id=%s WHERE id=%s",
                 (active_id, session["user_id"]))
     conn.commit()
+    return jsonify({"status": "ok"})
+
+# Получение/установка режима поиска
+@app.route("/api/search-mode", methods=["GET", "POST"])
+@login_required
+def search_mode_api():
+    conn = db_service.get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    if request.method == "GET":
+        cur.execute("SELECT active_search_mode FROM users WHERE id=%s", (session["user_id"],))
+        row = cur.fetchone()
+        mode = row["active_search_mode"] if row and row["active_search_mode"] else "balanced"
+        cur.close()
+        conn.close()
+        return jsonify(mode)
+
+    # POST = установка режима
+    data = request.json
+    mode = data.get("mode", "balanced")
+    if mode not in ("nearby", "balanced", "interests"):
+        mode = "balanced"
+    cur.execute("UPDATE users SET active_search_mode=%s WHERE id=%s",
+                (mode, session["user_id"]))
+    conn.commit()
+    cur.close()
+    conn.close()
     return jsonify({"status": "ok"})
 
 @app.route("/api/search", methods=["POST"])

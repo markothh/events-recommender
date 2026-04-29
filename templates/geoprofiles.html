@@ -4,7 +4,27 @@
 <div class="container mt-4">
 
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4>Геопрофили</h4>
+    <h4>Настройки</h4>
+  </div>
+
+  <!-- Режим поиска -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Режим поиска</h5>
+    </div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2" role="group">
+        <button type="button" class="btn btn-outline-secondary flex-fill flex-lg-grow-0 mode-btn" data-mode="nearby">Рядом</button>
+        <button type="button" class="btn btn-outline-secondary flex-fill flex-lg-grow-0 mode-btn" data-mode="balanced">Сбалансированный</button>
+        <button type="button" class="btn btn-outline-secondary flex-fill flex-lg-grow-0 mode-btn" data-mode="interests">По интересам</button>
+      </div>
+      <p class="text-muted small mt-2" id="mode-description">Выберите режим поиска событий</p>
+    </div>
+  </div>
+
+  <!-- Геопрофили -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5>Геопрофили</h5>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createProfileModal">
       Создать профиль
     </button>

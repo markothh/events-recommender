@@ -9,9 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    interests JSONB DEFAULT '[]'::JSONB,
+    interests JSONB DEFAULT '{}'::JSONB,
     geoprofiles JSONB DEFAULT '[]'::JSONB,
-    active_profile_id TEXT
+    active_profile_id TEXT,
+    active_search_mode TEXT DEFAULT 'balanced'::TEXT
 );
 
 -- Архив событий
@@ -73,3 +74,6 @@ CREATE TABLE IF NOT EXISTS sync_state (
 -- Инициализация начальной даты синхронизации (например, 30 дней назад)
 INSERT INTO sync_state (key, value) VALUES ('last_event_update', '2025-01-01')
 ON CONFLICT (key) DO NOTHING;
+
+-- Миграция: добавление колонки режима поиска (выполняется всегда)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active_search_mode TEXT DEFAULT 'balanced';

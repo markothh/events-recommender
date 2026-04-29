@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["/bin/sh", "-c", "cron && python3 app.py --host 0.0.0.0"]
+CMD ["/bin/sh", "-c", "python3 scripts/init_db.py && cron && python3 app.py --host 0.0.0.0"]

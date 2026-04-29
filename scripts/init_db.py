@@ -4,15 +4,28 @@ sys.path.insert(0, '/app')
 import psycopg2
 from datetime import datetime
 
+
+def get_connection():
+    return psycopg2.connect(
+        host='db',
+        user='postgres',
+        password='123123',
+        dbname='events_db'
+    )
+
+
+def get_connection():
+    return psycopg2.connect(
+        host='db',
+        user='postgres',
+        password='123123',
+        dbname='events_db'
+    )
+
+
 def load_tags():
-    """Загружает теги из tags.txt если таблица пустая"""
     try:
-        conn = psycopg2.connect(
-            host='db',
-            user='postgres', 
-            password='123123',
-            dbname='events_db'
-        )
+        conn = get_connection()
         cur = conn.cursor()
         
         cur.execute('SELECT COUNT(*) FROM tags')
@@ -39,16 +52,11 @@ def load_tags():
     except Exception as e:
         print(f'Error loading tags: {e}')
 
+
 def refresh_cache():
-    """Обновляет materialized view events_cache"""
     try:
         print('Refreshing events_cache...')
-        conn = psycopg2.connect(
-            host='db',
-            user='postgres',
-            password='123123',
-            dbname='events_db'
-        )
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute('REFRESH MATERIALIZED VIEW events_cache')
         conn.commit()
@@ -58,16 +66,23 @@ def refresh_cache():
     except Exception as e:
         print(f'Error refreshing cache: {e}')
 
+
 def update_events():
-    """Загружает события из Kudago API"""
     try:
         print('Updating events from Kudago API...')
-        from db import update_events_since
-        count = update_events_since(datetime.now())
-        print(f'Updated {count} events')
-        refresh_cache()
+        from services.kudago_client import kudago_client
+        
+        events = kudago_client.fetch_events_since(datetime.now())
+        if events:
+            from scripts.kudago_sync import save_events_to_db
+            save_events_to_db(events, datetime.now())
+            refresh_cache()
+            print(f'Updated {len(events)} events')
+        else:
+            print('No new events')
     except Exception as e:
         print(f'Error updating events: {e}')
+
 
 if __name__ == '__main__':
     load_tags()
