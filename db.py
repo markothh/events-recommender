@@ -2,7 +2,7 @@ import json
 from typing import Dict
 
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import execute_values, Json, RealDictCursor
 from config import DB, KUDAGO_API
@@ -180,6 +180,8 @@ def search_events_from_db(user_id: int, since_dt: datetime = None):
             e.id,
             e.title,
             e.place,
+            e.start_date,
+            e.end_date,
             e.tags,
             e.thumbnail
         FROM events_cache e
@@ -220,7 +222,8 @@ def search_events_from_db(user_id: int, since_dt: datetime = None):
 
     return out
 
-def search_events_from_db_by_query(query, since_dt=None):
+
+def search_events_from_db_by_query(query_input, since_dt=None):
     """
     Ищет события в БД по названию и тегам.
     - query: строка поиска (по title или тегам)
@@ -229,9 +232,9 @@ def search_events_from_db_by_query(query, since_dt=None):
     """
     conn = get_conn()
     cur = conn.cursor()
-    query_lower = query.lower()
+    query_lower = query_input.lower()
 
-    sql = "SELECT id, title, place, tags, thumbnail FROM events_cache"
+    sql = "SELECT id, title, place, start_date, end_date, tags, thumbnail FROM events_cache"
     params = []
     if since_dt:
         sql += " WHERE start_date >= %s"
@@ -289,6 +292,55 @@ def get_user_interest_vector(user_id: int) -> Dict[str, float]:
             return {tag: float(score) for tag, score in interests.items()}
     finally:
         conn.close()
+
+def load_tags_from_file(filepath: str):
+    """Загружает теги из файла (один тег - одна строка)"""
+    conn = get_conn()
+    cur = conn.cursor()
+    
+    # Читаем теги из файла
+    with open(filepath, 'r', encoding='utf-8') as f:
+        tags = [line.strip().strip('"') for line in f if line.strip() and line.strip() != '"']
+    
+    # Вставляем теги
+    tag_values = [(tag,) for tag in tags if tag]
+    
+    if tag_values:
+        cur.executemany(
+            "INSERT INTO tags (name) VALUES (%s) ON CONFLICT DO NOTHING",
+            tag_values
+        )
+        conn.commit()
+    
+    cur.close()
+    conn.close()
+    return len(tag_values)
+
+def get_last_sync_date() -> datetime:
+    """Получает дату последней синхронизации событий"""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM sync_state WHERE key = 'last_event_update'")
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if row:
+        return datetime.fromisoformat(row[0])
+    return datetime.now() - timedelta(days=30)
+
+def update_last_sync_date(dt: datetime):
+    """Обновляет дату последней синхронизации"""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO sync_state (key, value, updated_at) VALUES ('last_event_update', %s, NOW()) "
+        "ON CONFLICT (key) DO UPDATE SET value = %s, updated_at = NOW()",
+        (dt.isoformat(), dt.isoformat())
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
 
 if __name__ == '__main__':
     update_events_since(datetime.now())

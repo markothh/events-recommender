@@ -62,3 +62,14 @@ BEGIN
     REFRESH MATERIALIZED VIEW events_cache;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Таблица для хранения даты последнего обновления событий
+CREATE TABLE IF NOT EXISTS sync_state (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Инициализация начальной даты синхронизации (например, 30 дней назад)
+INSERT INTO sync_state (key, value) VALUES ('last_event_update', '2025-01-01')
+ON CONFLICT (key) DO NOTHING;

@@ -3,37 +3,29 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Events App</title>
+    <title>События</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <style>
-      /* мобильные стили */
-      body { padding-bottom: 80px; }
-      .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
       .tag-tile { cursor: pointer; user-select: none; }
       .tag-selected { background-color: #0d6efd; color: white; }
-      .event-tile { border: 1px solid #ddd; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
-      .event-card { height: 100%; }
-      .event-image { height: 200px; object-fit: cover; width: 100%; }
-      .geoprofile-card { height: 100%; }
-      @media (max-width: 768px) {
-        .event-image { height: 150px; }
-        .navbar-brand { font-size: 1.1rem; }
-        .container { padding-left: 12px; padding-right: 12px; }
-        h2 { font-size: 1.3rem; }
-        h4 { font-size: 1.1rem; }
-        .btn { padding: 0.4rem 0.8rem; font-size: 0.875rem; }
-        #ev-map { height: 300px !important; }
-      }
-      @media (max-width: 576px) {
-        .event-image { height: 120px; }
-        .modal-body { padding: 1rem; }
+      .event-tile { border: 1px solid #ddd; padding: 12px; border-radius: 8px; }
+      .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      
+      /* Mobile: navbar fixed bottom */
+      .navbar { position: fixed; bottom: 0; top: auto; width: 100%; z-index: 1000; }
+      body { padding-bottom: 70px; padding-top: 0; }
+      
+      /* PC (md and up): navbar fixed top */
+      @media (min-width: 768px) {
+        .navbar { position: fixed; top: 0; bottom: auto; }
+        body { padding-top: 70px; padding-bottom: 0; }
       }
     </style>
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-bottom">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="container-fluid">
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbars"
           aria-controls="navbars" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,8 +36,8 @@
         </a>
         <div class="collapse navbar-collapse" id="navbars">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}"><i class="bi bi-house"></i> Главная</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('tracked') }}"><i class="bi bi-bookmark"></i> Отслеживаемое</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Главная</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('tracked') }}">Отслеживаемое</a></li>
           </ul>
           <ul class="navbar-nav">
             <li class="nav-item dropdown">
@@ -54,6 +46,7 @@
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="{{ url_for('profile') }}">Настройки</a></li>
+                <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="{{ url_for('logout') }}">Выйти</a></li>
               </ul>
             </li>
@@ -62,8 +55,7 @@
       </div>
     </nav>
 
-    <div class="container mt-3 pb-5">
-      <!-- placeholder под предупреждение про пустой вектор интересов -->
+    <div class="container mt-4">
       <div id="empty-interests-warning" class="alert alert-warning d-none">
         Вы ещё не выбрали интересы. <a href="{{ url_for('select_interests') }}" class="alert-link">Выбрать сейчас</a>
       </div>
@@ -71,7 +63,6 @@
       {% block content %}{% endblock %}
     </div>
 
-    <!-- bootstrap icons -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     {% block scripts %}{% endblock %}

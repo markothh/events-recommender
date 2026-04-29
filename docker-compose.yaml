@@ -27,6 +27,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./tags.txt:/docker-entrypoint-initdb.d/tags.txt:ro
     ports:
       - "5432:5432"
     healthcheck:

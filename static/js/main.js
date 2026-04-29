@@ -134,6 +134,7 @@ function renderCards(events) {
     let row;
 
     events.forEach((event, idx) => {
+        // 4 карточки в ряд на PC, 2 на планшете, 1 на мобильном
         if (idx % 4 === 0) {
             row = $('<div class="row g-3 mb-3"></div>');
             $recs.append(row);
@@ -144,74 +145,23 @@ function renderCards(events) {
             .join(" ");
 
         const card = $(`
-            <div class="col-md-3">
-                <div class="event-card"
-                     style="
-                        cursor: pointer;
-                        width: 100%;
-                        height: 260px;
-                        background: ${event.thumbnail
-                            ? `url(${event.thumbnail}) center/cover no-repeat`
-                            : '#f0f0f0'};
-                        color: white;
-                        border-radius: 8px;
-                        position: relative;
-                        overflow: hidden;
-                        display: block;
-                     ">
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="card h-100 shadow-sm text-white position-relative" 
+                     style="cursor: pointer; border-radius: 8px; overflow: hidden; min-height: 200px; background: ${event.thumbnail ? `url(${event.thumbnail}) center/cover` : '#6c757d'};">
 
-                    <div class="event-title"
-                         style="
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            width: 100%;
-                            background: rgba(0,0,0,0.55);
-                            padding: 6px 10px;
-                            font-weight: 600;
-                            font-size: 0.95rem;
-                            text-shadow: 0 1px 2px black;
-                         ">
-                        ${event.title}
+                    <div class="position-absolute top-0 start-0 w-100 p-2" style="background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);">
+                        <div class="text-truncate fw-semibold">${event.title}</div>
                     </div>
 
-                    <div class="event-bottom"
-                         style="
-                            position: absolute;
-                            bottom: 0;
-                            left: 0;
-                            width: 100%;
-                            background: rgba(0,0,0,0.55);
-                            padding: 6px 10px;
-                            font-size: 0.85rem;
-                         ">
-
-                        ${event.place ? `
-                            <div class="event-place"
-                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                <i class="bi bi-geo-alt"></i> ${event.place}
-                            </div>
-                        ` : ''}
-
-                        <div class="matched-tags"
-                             style="
-                                margin-top: 6px;
-                                display: none;
-                                font-size: 0.9rem;
-                             ">
-                            ${matchedTags}
-                        </div>
+                    <div class="position-absolute bottom-0 start-0 w-100 p-2" style="background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);">
+                        ${event.place ? `<div class="small text-truncate"><i class="bi bi-geo-alt"></i> ${event.place}</div>` : ''}
+                        ${matchedTags ? `<div class="mt-1">${matchedTags}</div>` : ''}
                     </div>
                 </div>
             </div>
         `);
 
-        card.find(".event-card").hover(
-            function () { $(this).find(".matched-tags").slideDown(100); },
-            function () { $(this).find(".matched-tags").slideUp(100); }
-        );
-
-        card.find(".event-card").click(() => {
+        card.click(function() {
             window.location.href = `/event/${event.id}`;
         });
 
